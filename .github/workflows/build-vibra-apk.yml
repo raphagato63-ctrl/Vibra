@@ -39,7 +39,7 @@ jobs:
       - name: Instalar dependências e criar versão web
         working-directory: vibra_android
         run: |
-          npm ci
+          npm install
           npm run build:dev
 
       - name: Criar projeto Android
