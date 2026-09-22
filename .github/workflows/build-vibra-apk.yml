@@ -1,0 +1,61 @@
+name: Build Vibra APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "vibra-android-cloud-preparado.zip"
+      - ".github/workflows/build-vibra-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Extrair projeto Vibra
+        run: |
+          rm -rf vibra_android extracted
+          mkdir extracted
+          unzip -q vibra-android-cloud-preparado.zip -d extracted
+          mv extracted/vibra_android vibra_android
+          test -f vibra_android/package.json
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vibra_android/package-lock.json
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Instalar dependências e criar versão web
+        working-directory: vibra_android
+        run: |
+          npm ci
+          npm run build:dev
+
+      - name: Criar projeto Android
+        working-directory: vibra_android
+        run: npx cap add android
+
+      - name: Sincronizar Capacitor
+        working-directory: vibra_android
+        run: npx cap sync android
+
+      - name: Gerar APK
+        working-directory: vibra_android/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vibra-APK
+          path: vibra_android/android/app/build/outputs/apk/debug/app-debug.apk
